@@ -15,6 +15,7 @@ struct V2SettingsTab: View {
     /// A settings link (`conduit://settings/voice`) waiting to open its page.
     @Binding var link: ConduitAppLink.SettingsLink?
     @State private var snapshot: SettingsSnapshot?
+    @State private var lastVoiceRefresh: Date?
 
     var body: some View {
         let _ = ResponsivenessSignposts.noteBody("V2SettingsTab")
@@ -45,6 +46,8 @@ struct V2SettingsTab: View {
         // this follows the tab's active state rather than onDisappear.
         .onChange(of: shell.isTabActive) { _, active in
             guard !active else { return }
+            if let lastVoiceRefresh, Date().timeIntervalSince(lastVoiceRefresh) < 60 { return }
+            lastVoiceRefresh = Date()
             Task { await appState.refreshVoiceCapabilities() }
         }
     }

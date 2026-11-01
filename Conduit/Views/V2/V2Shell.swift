@@ -909,6 +909,15 @@ struct V2Shell: View {
 
     @ViewBuilder
     private func tabRoot(_ tab: V2Tab, split: Bool, canSplit: Bool, list: V2SplitLayout.ListColumn) -> some View {
+        if V2BarExperiment.barOnly {
+            V2BarOnlyPlaceholder(tab: tab)
+        } else {
+            fullTabRoot(tab, split: split, canSplit: canSplit, list: list)
+        }
+    }
+
+    @ViewBuilder
+    private func fullTabRoot(_ tab: V2Tab, split: Bool, canSplit: Bool, list: V2SplitLayout.ListColumn) -> some View {
         switch tab {
         case .chats where split:
             splitColumns(path: $chatsPath, list: list, offersNewChat: true, hostsSettings: true) {
@@ -1578,21 +1587,59 @@ struct V2NoticeBanner: View {
 
 // MARK: - Capsule tab bar
 
+/// A tab with nothing in it, for `V2BarExperiment.barOnly`.
+private struct V2BarOnlyPlaceholder: View {
+    let tab: V2Tab
+
+    var body: some View {
+        let _ = ResponsivenessSignposts.noteBody("V2BarOnlyPlaceholder")
+        VStack(spacing: 8) {
+            Image(systemName: tab.symbol)
+                .font(.system(size: 40, weight: .semibold))
+            Text(tab.title)
+                .scaledFont(.title.weight(.semibold))
+            Text(verbatim: "Bar-only test")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+    }
+}
+
+/// Bar lag experiment (not for main). `-ConduitBarOnly YES` in the scheme's
+/// launch arguments draws an empty placeholder in place of every tab, so the
+/// bar can be tried with nothing heavy behind it.
+enum V2BarExperiment {
+    static let barOnly = UserDefaults.standard.bool(forKey: "ConduitBarOnly")
+    /// Quick and nearly without bounce, for the highlight only.
+    static let highlight = Animation.spring(response: 0.25, dampingFraction: 0.9)
+    /// How long after a tap the screen swaps, in seconds; 0 swaps on the
+    /// next turn of the main run loop. `-ConduitBarScreenDelay 0.12` tries
+    /// letting the highlight run for a while before the heavy update.
+    static let screenDelay = UserDefaults.standard.double(forKey: "ConduitBarScreenDelay")
+}
+
 /// The tab bar: four items in a glass capsule, the selection
-/// highlight sliding between them on the overshoot spring.
+/// highlight sliding between them. The bar draws its own copy of the
+/// selection: a tap moves the highlight in a cheap update of the bar alone,
+/// and the screens swap in a later, plain transaction.
 private struct V2CapsuleTabBar: View {
     @Binding var selection: V2Tab
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var highlight
+    @State private var shown: V2Tab
+
+    init(selection: Binding<V2Tab>) {
+        _selection = selection
+        _shown = State(initialValue: selection.wrappedValue)
+    }
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(V2Tab.destinations) { tab in
-                let isSelected = selection == tab
+                let isSelected = shown == tab
                 Button {
-                    withAnimation(ConduitMotion.overshoot(reduceMotion: reduceMotion)) {
-                        selection = tab
-                    }
+                    select(tab)
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: tab.symbol)
@@ -1621,9 +1668,21 @@ private struct V2CapsuleTabBar: View {
                 }
             }
         }
+        .animation(reduceMotion ? nil : V2BarExperiment.highlight, value: shown)
         .padding(4)
         .conduitGlassControl(cornerRadius: 28, interactive: false)
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+        // A switch made elsewhere (a link, a notification) moves the highlight too.
+        .onChange(of: selection) { _, new in shown = new }
+    }
+
+    private func select(_ tab: V2Tab) {
+        shown = tab
+        DispatchQueue.main.asyncAfter(deadline: .now() + V2BarExperiment.screenDelay) {
+            // A later tap, or a switch made elsewhere meanwhile, wins.
+            guard shown == tab, selection != tab else { return }
+            selection = tab
+        }
     }
 }
 
