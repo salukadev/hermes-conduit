@@ -17,6 +17,7 @@ struct V2SettingsTab: View {
     @State private var snapshot: SettingsSnapshot?
 
     var body: some View {
+        let _ = ResponsivenessSignposts.noteBody("V2SettingsTab")
         ZStack {
             // Shows while the page loads; the home page draws its own over it.
             V2Backdrop(drifts: false)
