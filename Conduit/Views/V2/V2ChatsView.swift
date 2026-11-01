@@ -508,6 +508,7 @@ struct V2ChatsView: View, Equatable {
     }
 
     var body: some View {
+        let _ = ResponsivenessSignposts.noteBody("V2ChatsView")
         // A new render reads the catalog afresh; within it, the list, the
         // filter menu and its counts share each walk.
         let _ = renderMemo.reset()

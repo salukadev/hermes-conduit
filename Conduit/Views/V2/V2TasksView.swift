@@ -33,6 +33,7 @@ struct V2TasksView: View {
     }
 
     var body: some View {
+        let _ = ResponsivenessSignposts.noteBody("V2TasksView")
         let selected = segment.wrappedValue
         ZStack {
             V2Backdrop()

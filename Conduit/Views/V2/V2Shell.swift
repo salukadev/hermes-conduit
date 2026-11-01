@@ -616,7 +616,12 @@ struct V2Shell: View {
     }
 
     var body: some View {
+        let _ = ResponsivenessSignposts.noteBody("V2Shell")
         sizedTabs
+            // Each publish, for a trace to line up with the bodies it redraws.
+            .onReceive(appState.objectWillChange) { _ in
+                ResponsivenessSignposts.signposter.emitEvent("AppState publish")
+            }
             .onChange(of: conversationVisible, initial: true) { _, visible in
                 // Covered means streaming rows needn't redraw and the chat
                 // doesn't count as seen (AppState.showSidebar).
@@ -691,6 +696,7 @@ struct V2Shell: View {
                 }
             }
             .onChange(of: selectedTab) { _, tab in
+                TabSwitchSignpost.endAfterCommit()
                 visitedTabs.insert(tab)
                 giveUpRoomIfLeft()
                 // Only a tab the user picked clicks; a chat or link that
@@ -845,7 +851,7 @@ struct V2Shell: View {
             ZStack(alignment: .bottom) {
                 if split || (!conversationVisible && !pulseVisible) {
                     HStack(spacing: 10) {
-                        V2CapsuleTabBar(selection: $selectedTab)
+                        V2CapsuleTabBar(selection: barSelection)
                         voiceButton(chatVoiceBeside: V2SplitLayout.hasChatVoiceBeside(split: split, path: path(of: selectedTab), inRoom: appState.activeRoomSurface != nil))
                     }
                     .padding(.horizontal, 16)
@@ -1089,8 +1095,22 @@ struct V2Shell: View {
 
     private func selectTab(_ tab: V2Tab) {
         guard selectedTab != tab else { return }
+        TabSwitchSignpost.begin(from: selectedTab.rawValue, to: tab.rawValue, programmatic: true)
         programmaticTab = tab
         selectedTab = tab
+    }
+
+    /// The bar's tap, timed from the tap itself (`TabSwitchSignpost`).
+    private var barSelection: Binding<V2Tab> {
+        Binding(
+            get: { selectedTab },
+            set: { tab in
+                if tab != selectedTab {
+                    TabSwitchSignpost.begin(from: selectedTab.rawValue, to: tab.rawValue, programmatic: false)
+                }
+                selectedTab = tab
+            }
+        )
     }
 
     private func closeConversation() {

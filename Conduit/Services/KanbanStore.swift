@@ -296,6 +296,9 @@ final class KanbanStore {
 
     func poll(includeArchived: Bool = false) async {
         guard !isMutating, !isLoading else { return }
+        let signposter = ResponsivenessSignposts.signposter
+        let polling = signposter.beginInterval("Kanban poll", id: signposter.makeSignpostID())
+        defer { signposter.endInterval("Kanban poll", polling) }
         await reload(includeArchived: includeArchived)
     }
 

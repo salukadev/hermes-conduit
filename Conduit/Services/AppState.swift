@@ -21293,6 +21293,9 @@ final class AppState: ObservableObject {
         guard isSceneActive, isConnected else {
             return PollCadence.stretched(chatListPollPacer.backoff.interval, by: deviceConditions())
         }
+        let signposter = ResponsivenessSignposts.signposter
+        let polling = signposter.beginInterval("Chat list poll", id: signposter.makeSignpostID())
+        defer { signposter.endInterval("Chat list poll", polling) }
         let registryRead = await refreshLiveSessionStatuses()
         // Left the screen, or the poll stopped, while the registry read was
         // on its way: nothing more reads.
@@ -22214,6 +22217,9 @@ final class AppState: ObservableObject {
     /// definitions and the cron-session history. Refresh them together so a
     /// newly completed run is visible without visiting the Sessions tab first.
     func refreshCronContent() async {
+        let signposter = ResponsivenessSignposts.signposter
+        let refreshing = signposter.beginInterval("Tasks refresh", id: signposter.makeSignpostID())
+        defer { signposter.endInterval("Tasks refresh", refreshing) }
         async let sessionRefresh: Void = refreshSessionCatalog()
         async let jobsRefresh: Void = loadCronJobs()
         async let notificationsRefresh: Void = refreshCronNotifications()
@@ -36636,6 +36642,9 @@ final class AppState: ObservableObject {
     }
 
     func refreshVoiceCapabilities() async {
+        let signposter = ResponsivenessSignposts.signposter
+        let refreshing = signposter.beginInterval("Voice capabilities refresh", id: signposter.makeSignpostID())
+        defer { signposter.endInterval("Voice capabilities refresh", refreshing) }
         let profile = activeProfile
         guard isConnected, let bridge = dashboardTicketBridge else {
             voiceCapabilitySnapshot = .unavailable

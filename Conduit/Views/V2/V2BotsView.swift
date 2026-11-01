@@ -20,6 +20,7 @@ struct V2BotsView: View {
     }
 
     var body: some View {
+        let _ = ResponsivenessSignposts.noteBody("V2BotsView")
         ZStack {
             V2Backdrop(isTabRoot: true)
             BotRosterView(createRequest: $createRequest)

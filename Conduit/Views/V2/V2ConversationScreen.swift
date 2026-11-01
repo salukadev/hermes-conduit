@@ -128,6 +128,7 @@ struct V2ConversationScreen: View {
     }
 
     var body: some View {
+        let _ = ResponsivenessSignposts.noteBody("V2ConversationScreen")
         HStack(spacing: 0) {
             chatColumn
             if showsSidePanel {
