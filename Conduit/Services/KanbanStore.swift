@@ -294,8 +294,12 @@ final class KanbanStore {
         if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
     }
 
+    /// Not published: the board's return-to-tab catch-up reads it once.
+    private(set) var lastPollAt: Date?
+
     func poll(includeArchived: Bool = false) async {
         guard !isMutating, !isLoading else { return }
+        lastPollAt = Date()
         let signposter = ResponsivenessSignposts.signposter
         let polling = signposter.beginInterval("Kanban poll", id: signposter.makeSignpostID())
         defer { signposter.endInterval("Kanban poll", polling) }

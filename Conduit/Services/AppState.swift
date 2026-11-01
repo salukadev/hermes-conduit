@@ -5421,6 +5421,7 @@ final class AppState: ObservableObject {
     /// cuts short, and a count of catalog reads that changed the list.
     private(set) var chatListPollPacer = ChatListPollPacer()
     private let chatListPollSleep = WakeableSleep()
+    private var lastChatListPollAt: Date?
     /// Published so a project's page beside the open chat reads its own
     /// list again when the catalog changes (issue 1454).
     @Published private(set) var chatListCatalogGeneration = 0
@@ -21264,7 +21265,16 @@ final class AppState: ObservableObject {
     func runChatListPolling() async {
         chatListPollPacer.reset()
         chatListPollSleep.clearPendingWake()
+        // A return to the list soon after its last poll waits out the rest
+        // of the shortest interval rather than reading again at once; a
+        // return to the app or a tap still wakes it.
+        if let lastChatListPollAt {
+            let wait = PollCadence.stretched(chatListPollPacer.backoff.interval, by: deviceConditions())
+                - Date().timeIntervalSince(lastChatListPollAt)
+            if wait > 0 { await chatListPollSleep.sleep(seconds: wait) }
+        }
         while !Task.isCancelled {
+            lastChatListPollAt = Date()
             let delay = await chatListPollTick()
             guard !Task.isCancelled else { return }
             await chatListPollSleep.sleep(seconds: delay)

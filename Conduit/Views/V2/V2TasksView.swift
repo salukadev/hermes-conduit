@@ -125,6 +125,9 @@ struct V2ScheduledList: View {
     @State private var showingBlueprints = false
     /// A job a blueprint just made, opened once the gallery has closed.
     @State private var createdJob: CronJob?
+    /// The last automatic load: a return to the tab within a minute on the
+    /// same profile and connection keeps what it has.
+    @State private var lastLoad: (key: String, at: Date)?
     /// Pinned jobs, per profile: "profile\tjobID" lines. Kept on the phone;
     /// Hermes has no pin for a job.
     @AppStorage("conduit.v2.pinnedCronJobs") private var pinnedRaw = ""
@@ -229,6 +232,9 @@ struct V2ScheduledList: View {
         // A hidden Tasks tab stays mounted; it loads when shown, like Chats.
         .task(id: "\(appState.activeProfile)|\(appState.isConnected)|\(shell.isTabActive)") {
             guard shell.isTabActive else { return }
+            let key = "\(appState.activeProfile)|\(appState.isConnected)"
+            if let lastLoad, lastLoad.key == key, Date().timeIntervalSince(lastLoad.at) < 60 { return }
+            lastLoad = (key, Date())
             await appState.refreshCronContent()
         }
         .refreshable { await appState.refreshCronContent() }

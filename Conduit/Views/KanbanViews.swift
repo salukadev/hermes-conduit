@@ -946,7 +946,8 @@ struct KanbanView: View {
             // Back on the tab, or the stream gone: refresh what changed
             // meanwhile. The first load is the configure task's own, and a
             // stream that just connected has nothing to catch up on.
-            if store.loadedBoardSlug != nil, !store.liveStreamConnected {
+            if store.loadedBoardSlug != nil, !store.liveStreamConnected,
+               store.lastPollAt.map({ Date().timeIntervalSince($0) >= 10 }) ?? true {
                 await store.poll(includeArchived: includeArchived)
             }
             while !Task.isCancelled {
